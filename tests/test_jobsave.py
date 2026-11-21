@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-os.environ["PEAKCUT_DATA"] = tempfile.mkdtemp(prefix="pc-jobsave-")
+os.environ["CLIPFORGE_DATA"] = tempfile.mkdtemp(prefix="pc-jobsave-")
 os.environ["DATABASE_URL"] = ""
 sys.path.insert(0, ".")
 from studio import auth, ctx, db, jobs  # noqa: E402
@@ -65,5 +65,5 @@ print("ALL PASSED" if not fails else f"{len(fails)} failed")
 import shutil  # noqa: E402
 
 db.engine.dispose()
-shutil.rmtree(os.environ["PEAKCUT_DATA"], ignore_errors=True)
+shutil.rmtree(os.environ["CLIPFORGE_DATA"], ignore_errors=True)
 sys.exit(1 if fails else 0)

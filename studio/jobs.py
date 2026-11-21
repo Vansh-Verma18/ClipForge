@@ -501,7 +501,7 @@ def _caption_words(job, clip, words, off):
     return [dict(w, s=w["s"] - off, e=w["e"] - off) for w in roman.words(raw)]
 
 
-CLIP_MINUTES = float(config.env("PEAKCUT_CLIP_MINUTES", "15"))     # the longest one clip may take to make
+CLIP_MINUTES = float(config.env("CLIPFORGE_CLIP_MINUTES", "15"))     # the longest one clip may take to make
 
 
 def _wait_for_clips(job, futures, began, workers):
@@ -752,7 +752,7 @@ def _run_job(job):
             render_one(job, clip, words_now)
 
     cpus = os.cpu_count() or 4
-    renders = ThreadPoolExecutor(2 if cpus < 8 else min(6, cpus // 6))  # more clips made at once on a bigger machine
+    renders = ThreadPoolExecutor(min(12, max(4, cpus // 2)))  # More aggressive: 4-12 concurrent renders (GPU/encoder bound)
     futures = []
     step = BLOCK * 16000 if span > PROGRESSIVE_FROM else hi - lo
     blocks = [(x, min(hi, x + step)) for x in range(lo, hi, step)] or [(lo, hi)]

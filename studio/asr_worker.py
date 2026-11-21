@@ -1,10 +1,10 @@
 """The speech-to-text machine: a tiny service that turns pieces of audio into words, meant for a machine with a
-graphics card. The main PeakCut server sends it pieces and gets the words back (see studio/transcribe.py).
+graphics card. The main ClipForge server sends it pieces and gets the words back (see studio/transcribe.py).
 
 Run with:  python -m studio.asr_worker
-Settings:  PEAKCUT_ASR_PROVIDER=cuda, PEAKCUT_ASR_TOKEN=<shared secret>, PEAKCUT_ASR_PORT (9000),
-           PEAKCUT_ASR_BATCH (pieces decoded together on the card, default 16),
-           PEAKCUT_ASR_LANGS (the spoken languages it has models for, e.g. "en,ar"; default "en")
+Settings:  CLIPFORGE_ASR_PROVIDER=cuda, CLIPFORGE_ASR_TOKEN=<shared secret>, CLIPFORGE_ASR_PORT (9000),
+           CLIPFORGE_ASR_BATCH (pieces decoded together on the card, default 16),
+           CLIPFORGE_ASR_LANGS (the spoken languages it has models for, e.g. "en,ar"; default "en")
 
 It holds nothing: no accounts, no files, no database. It only answers on the private network, and only to callers
 that know the shared secret."""
@@ -19,14 +19,14 @@ from fastapi import FastAPI, HTTPException, Request
 
 from . import fetch_model, transcribe
 
-TOKEN = os.environ.get("PEAKCUT_ASR_TOKEN", "").strip()
-PORT = int(os.environ.get("PEAKCUT_ASR_PORT", "9000"))
-CARD_BATCH = int(os.environ.get("PEAKCUT_ASR_BATCH", "16"))
+TOKEN = os.environ.get("CLIPFORGE_ASR_TOKEN", "").strip()
+PORT = int(os.environ.get("CLIPFORGE_ASR_PORT", "9000"))
+CARD_BATCH = int(os.environ.get("CLIPFORGE_ASR_BATCH", "16"))
 MAX_BODY = 64 * 1024 * 1024             # about 33 minutes of sound in one request: far more than is ever sent
 MAX_PIECE = 16000 * 40                  # a piece is 12 to 24 seconds; 40 is the ceiling
 # Languages this machine has models for. Asked for another one, it says so (409) and the main server does those
 # pieces itself, so a video is never transcribed with the wrong language's model.
-LANGS = [x for x in (s.strip() for s in os.environ.get("PEAKCUT_ASR_LANGS", "en").split(",")) if fetch_model.known(x)] or ["en"]
+LANGS = [x for x in (s.strip() for s in os.environ.get("CLIPFORGE_ASR_LANGS", "en").split(",")) if fetch_model.known(x)] or ["en"]
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 _stats = {"pieces": 0, "audio_s": 0.0, "busy_s": 0.0, "since": time.time()}
@@ -83,12 +83,12 @@ async def decode(request: Request):
 
 def main():
     if not TOKEN:
-        raise SystemExit("Set PEAKCUT_ASR_TOKEN: the speech machine refuses to start without a shared secret.")
+        raise SystemExit("Set CLIPFORGE_ASR_TOKEN: the speech machine refuses to start without a shared secret.")
     for lang in LANGS:                  # fetched if missing, and loaded now, so the first request is not the slow one
         fetch_model.ensure(lang)
         transcribe._recognizer(lang)
     print(f"Speech machine ready on port {PORT} ({transcribe.PROVIDER}, {', '.join(LANGS)})", flush=True)
-    uvicorn.run(app, host=os.environ.get("PEAKCUT_ASR_HOST", "0.0.0.0"), port=PORT, log_level="warning")
+    uvicorn.run(app, host=os.environ.get("CLIPFORGE_ASR_HOST", "0.0.0.0"), port=PORT, log_level="warning")
 
 
 if __name__ == "__main__":

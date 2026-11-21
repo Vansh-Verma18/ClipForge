@@ -4,6 +4,7 @@ import json
 import math
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 
@@ -319,6 +320,21 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
         t += WINDOW_SEC - OVERLAP_SEC
     per_window = max(2, min(8, int(np.ceil(max_clips * 1.5 / len(windows))) + 1))
     extra = _game_rules(game)
+    
+    # Helper function to process a single window in parallel
+    def process_window(window_data):
+        """Process a single window - returns (clips, model, tokens) or None on error"""
+        a, b, prompt = window_data
+        try:
+            out, model, spent = ask_ai(prompt, purpose="Video: finding clips")
+            valid_clips = [c for c in out if isinstance(c, dict) and a - 5 <= float(c.get("start", -1)) < b]
+            return valid_clips, model, spent
+        except Exception as e:  # noqa: BLE001
+            log(f"AI window {a:.0f}-{b:.0f}s failed: {e}")
+            return None
+    
+    # Prepare all windows data first
+    window_tasks = []
     for a, b in windows:
         chunk = [l for l in lines if a <= l["s"] < b]
         if len(chunk) < 3:
@@ -326,12 +342,18 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
         prompt = (HEAD.format(title=_safe(title) or "unknown", uploader=_safe(uploader) or "unknown", n=per_window)
                   + extra
                   + _rules(min_len, max_len, _fmt(chunk)))
-        try:
-            out, used_model, spent = ask_ai(prompt, purpose="Video: finding clips")
-            tokens += spent
-            found += [c for c in out if isinstance(c, dict) and a - 5 <= float(c.get("start", -1)) < b]
-        except Exception as e:  # noqa: BLE001
-            log(f"AI window {a:.0f}-{b:.0f}s failed: {e}")
+        window_tasks.append((a, b, prompt))
+    
+    # Process all windows in parallel (max 4 concurrent to avoid rate limits)
+    with ThreadPoolExecutor(max_workers=min(4, len(window_tasks))) as executor:
+        futures = {executor.submit(process_window, task): task for task in window_tasks}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                clips, model, spent = result
+                found.extend(clips)
+                used_model = model or used_model
+                tokens += spent
     note = ""
     if not used_model:
         found = fallback_by_loudness(db, words, max_clips, max_len, duration)
