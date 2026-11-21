@@ -1,4 +1,10 @@
-# PeakCut
+# ClipForge
+
+AI-powered video clipper - Turn long videos and streams into viral short clips with automatic captions and intelligent moment detection.
+
+**Forked from PeakCut** | Enhanced with performance optimizations and new features by [Vansh-Verma18](https://github.com/Vansh-Verma18)
+
+---
 
 Turn long videos and live streams into captioned vertical clips, ready to post. Free and open source: run it on
 your own computer or server, with your own AI key.
