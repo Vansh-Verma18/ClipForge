@@ -68,8 +68,9 @@ check("the AI's hashtags are added to the AI's description", posting._caption(cl
 check("a description the person wrote is posted as it is", posting._caption(dict(clip, fixed_description=True), {"post_footer": "Clipped from @x"}) == "My set text" + NL * 2 + "Clipped from @x")
 
 with patch.object(render, "_render_in", return_value={"file": "a.mp4"}) as encode:
-    render.render_clip(Path("x.mp4"), Path(os.environ["CLIPFORGE_DATA"]) / "out", "a", {"start": 0, "end": 5, "title": "T", "description": "D text"}, [], 1920, 1080)
-    check("the title and description are written into the file as well", encode.call_args.kwargs["meta"]["description"] == "D text" and encode.call_args.kwargs["meta"]["title"] == "T")
+    render.render_clip(Path("x.mp4"), Path(os.environ["PEAKCUT_DATA"]) / "out", "a", {"start": 0, "end": 5, "title": "T", "description": "D text"}, [], 1920, 1080)
+    check("the title and description are written into the file as well", (encode.call_args.kwargs.get("meta") or encode.call_args.args[-1])["description"] == "D text"
+          and (encode.call_args.kwargs.get("meta") or encode.call_args.args[-1])["title"] == "T")
 
 print("ALL PASSED" if not fails else f"{len(fails)} failed")
 import shutil  # noqa: E402
